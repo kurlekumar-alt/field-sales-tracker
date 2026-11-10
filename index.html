@@ -9,6 +9,7 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen p-4 sm:p-6 lg:p-8">
   <div class="max-w-6xl mx-auto space-y-6">
@@ -320,9 +321,23 @@
                 <span>Total Booked (Month)</span>
                 <span>💰</span>
               </div>
-              <div class="text-xl font-bold text-emerald-600 mt-1" id="trend-rep-revenue-month">$0</div>
+              <div class="text-xl font-bold text-emerald-600 mt-1" id="trend-rep-revenue-month">₹0</div>
               <p class="text-[11px] text-slate-400 mt-2">Target: ₹20,000</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Personal Activity Chart -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h4 class="font-bold text-slate-900 text-sm">My Daily Activity Trend (Past 7 Days)</h4>
+              <p class="text-xs text-slate-500">Doctor and pharmacy visit progression</p>
+            </div>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">7-Day Run</span>
+          </div>
+          <div class="relative h-60 w-full">
+            <canvas id="chart-rep-personal"></canvas>
           </div>
         </div>
       </div>
@@ -377,14 +392,37 @@
         </div>
 
         <!-- Date / Period Picker & Auto-save Status -->
-        <div class="flex items-center gap-3">
-          <div id="date-picker-container" class="flex items-center gap-2 text-xs font-medium text-slate-600">
-            <label for="review-date" class="text-slate-500">Date:</label>
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Daily Date Picker -->
+          <div id="date-picker-container" class="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <label for="review-date" class="text-slate-500">Day:</label>
             <input 
               type="date" 
               id="review-date" 
-              class="rounded-lg border border-slate-300 py-1 px-2.5 text-xs text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+              class="rounded-lg border border-slate-300 py-1 px-2 text-xs text-slate-800 focus:border-indigo-500 outline-none bg-white"
             >
+          </div>
+
+          <!-- Weekly Week Picker -->
+          <div id="week-picker-container" class="items-center gap-1.5 text-xs font-medium text-slate-600 hidden">
+            <label for="review-week" class="text-slate-500">Week:</label>
+            <input 
+              type="week" 
+              id="review-week" 
+              class="rounded-lg border border-slate-300 py-1 px-2 text-xs text-slate-800 focus:border-indigo-500 outline-none bg-white"
+            >
+            <span id="week-range-label" class="text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-semibold"></span>
+          </div>
+
+          <!-- Monthly Month Picker -->
+          <div id="month-picker-container" class="items-center gap-1.5 text-xs font-medium text-slate-600 hidden">
+            <label for="review-month" class="text-slate-500">Month:</label>
+            <input 
+              type="month" 
+              id="review-month" 
+              class="rounded-lg border border-slate-300 py-1 px-2 text-xs text-slate-800 focus:border-indigo-500 outline-none bg-white"
+            >
+            <span id="month-range-label" class="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold"></span>
           </div>
 
           <div id="storage-status" class="inline-flex items-center gap-1.5 text-xs text-slate-400">
@@ -430,6 +468,37 @@
           </div>
           <div id="stat-orders" class="text-2xl font-bold text-emerald-600 mt-1">0</div>
           <div id="stat-orders-value" class="text-xs text-slate-500 mt-1">Total revenue: ₹0</div>
+        </div>
+      </section>
+
+            <!-- Graphical Trends Section -->
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-4" aria-label="Field Performance Charts">
+        <!-- Chart 1: Doctor vs Pharmacy Visits by Rep -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Doctor vs. Pharmacy Visits by Rep</h3>
+              <p class="text-xs text-slate-500" id="chart-visits-subtitle">Doctor calls (indigo) vs. chemist calls (emerald)</p>
+            </div>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" id="chart-visits-badge">Visits</span>
+          </div>
+          <div class="relative h-64 sm:h-72 w-full">
+            <canvas id="chart-visits"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Revenue & Leads Performance -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Revenue (₹) &amp; Qualified Leads Leaderboard</h3>
+              <p class="text-xs text-slate-500" id="chart-revenue-subtitle">Revenue booked (bars) &amp; leads generated (line)</p>
+            </div>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Revenue</span>
+          </div>
+          <div class="relative h-64 sm:h-72 w-full">
+            <canvas id="chart-revenue"></canvas>
+          </div>
         </div>
       </section>
 
@@ -957,9 +1026,67 @@
     const tabMonthly = document.getElementById("tab-monthly");
     const datePicker = document.getElementById("review-date");
     const dateContainer = document.getElementById("date-picker-container");
+    const weekPickerContainer = document.getElementById("week-picker-container");
+    const reviewWeek = document.getElementById("review-week");
+    const weekRangeLabel = document.getElementById("week-range-label");
+    const monthPickerContainer = document.getElementById("month-picker-container");
+    const reviewMonth = document.getElementById("review-month");
+    const monthRangeLabel = document.getElementById("month-range-label");
     const tableTitle = document.getElementById("table-title");
     const tableSubtitle = document.getElementById("table-subtitle");
     const viewIndicator = document.getElementById("view-indicator");
+
+    // Chart.js instances
+    let visitsChart = null;
+    let revenueChart = null;
+    let repPersonalChart = null;
+
+    function getISOWeekString(date) {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+    }
+
+    function getWeekRange(weekStr) {
+      if (!weekStr || !weekStr.includes("-W")) {
+        weekStr = getISOWeekString(new Date());
+      }
+      const parts = weekStr.split("-W");
+      const year = parseInt(parts[0], 10);
+      const week = parseInt(parts[1], 10);
+
+      const jan4 = new Date(Date.UTC(year, 0, 4));
+      const dayOfWeek = jan4.getUTCDay() || 7;
+      const week1Mon = new Date(jan4);
+      week1Mon.setUTCDate(jan4.getUTCDate() - dayOfWeek + 1);
+
+      const monday = new Date(week1Mon);
+      monday.setUTCDate(week1Mon.getUTCDate() + (week - 1) * 7);
+
+      const sunday = new Date(monday);
+      sunday.setUTCDate(monday.getUTCDate() + 6);
+
+      const startStr = monday.toISOString().split("T")[0];
+      const endStr = sunday.toISOString().split("T")[0];
+
+      const startFormatted = monday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const endFormatted = sunday.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      return { start: startStr, end: endStr, label: `${startFormatted} – ${endFormatted}` };
+    }
+
+    function getMonthRange(monthStr) {
+      if (!monthStr || !monthStr.includes("-")) {
+        const now = new Date();
+        monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      }
+      const [year, month] = monthStr.split("-").map(Number);
+      const date = new Date(year, month - 1, 1);
+      const label = date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      return { monthStr, label };
+    }
 
     // Demo sample buttons removed for production
     const btnClear = document.getElementById("btn-clear");
@@ -1427,12 +1554,110 @@
       barRepDocMonth.style.width = `${monthDocPct}%`;
 
       trendRepRevMonth.textContent = `₹${revenueTotal.toLocaleString('en-IN')}`;
+
+      renderRepPersonalChart(loggedInRepId);
+    }
+
+    function renderRepPersonalChart(repId) {
+      const canvas = document.getElementById("chart-rep-personal");
+      if (!canvas) return;
+
+      const dates = [];
+      const now = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        dates.push(d.toISOString().split("T")[0]);
+      }
+
+      const dayLabels = dates.map(d => {
+        const parts = d.split("-");
+        return `${parts[1]}/${parts[2]}`;
+      });
+
+      const repDocs = [];
+      const repPharms = [];
+
+      dates.forEach(d => {
+        const dayList = logs[d] || [];
+        const entry = dayList.find(r => r.id === repId);
+        repDocs.push(entry ? (entry.docs || 0) : 0);
+        repPharms.push(entry ? (entry.pharms || 0) : 0);
+      });
+
+      if (repPersonalChart) {
+        repPersonalChart.destroy();
+      }
+
+      repPersonalChart = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: dayLabels,
+          datasets: [
+            {
+              label: "Doctor Calls",
+              data: repDocs,
+              backgroundColor: "rgba(79, 70, 229, 0.85)",
+              borderRadius: 4
+            },
+            {
+              label: "Pharmacy Calls",
+              data: repPharms,
+              backgroundColor: "rgba(16, 185, 129, 0.85)",
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { boxWidth: 10, font: { size: 10, family: "Inter, sans-serif" } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, font: { size: 10 } }
+            }
+          }
+        }
+      });
     }
 
     // 10. Manager View Logic
     datePicker.addEventListener("change", (e) => {
       selectedDate = e.target.value || new Date().toISOString().split("T")[0];
-      renderCurrentView();
+      if (currentTab === "daily") {
+        tableSubtitle.textContent = `Field logs for ${selectedDate}. Managers can edit/correct records.`;
+        renderCurrentView();
+      }
+    });
+
+    reviewWeek.addEventListener("change", () => {
+      const wr = getWeekRange(reviewWeek.value);
+      weekRangeLabel.textContent = wr.label;
+      if (currentTab === "weekly") {
+        tableTitle.textContent = `Weekly Field Performance Rollup (${wr.label})`;
+        tableSubtitle.textContent = `Aggregated performance for week ${reviewWeek.value} compared to weekly quotas.`;
+        renderCurrentView();
+      }
+    });
+
+    reviewMonth.addEventListener("change", () => {
+      const mr = getMonthRange(reviewMonth.value);
+      monthRangeLabel.textContent = mr.label;
+      if (currentTab === "monthly") {
+        tableTitle.textContent = `Monthly Field Performance Overview (${mr.label})`;
+        tableSubtitle.textContent = `Aggregated monthly totals for ${mr.label} and pacing toward monthly field targets.`;
+        renderCurrentView();
+      }
     });
 
     tabDaily.addEventListener("click", () => switchTab("daily"));
@@ -1451,8 +1676,13 @@
 
       if (tab === "daily") {
         dateContainer.style.display = "flex";
+        weekPickerContainer.classList.add("hidden");
+        weekPickerContainer.style.display = "none";
+        monthPickerContainer.classList.add("hidden");
+        monthPickerContainer.style.display = "none";
+
         tableTitle.textContent = `Daily Field Activity Log (${REPS.length} Reps)`;
-        tableSubtitle.textContent = "Managers can review and edit/correct any rep's submitted records.";
+        tableSubtitle.textContent = `Field logs for ${selectedDate}. Managers can edit/correct records.`;
         viewIndicator.textContent = "Daily Mode";
         viewIndicator.className = "text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium self-start sm:self-auto";
         labelDoctors.textContent = "Doctor Visits (Today)";
@@ -1461,9 +1691,16 @@
         labelOrders.textContent = "Orders Received (Today)";
       } else if (tab === "weekly") {
         dateContainer.style.display = "none";
-        tableTitle.textContent = "Weekly Field Performance Rollup (7-Day Cumulative)";
-        tableSubtitle.textContent = "Aggregated performance across the week compared to weekly quotas.";
-        viewIndicator.textContent = "Weekly Rollup (Calculated)";
+        weekPickerContainer.classList.remove("hidden");
+        weekPickerContainer.style.display = "flex";
+        monthPickerContainer.classList.add("hidden");
+        monthPickerContainer.style.display = "none";
+
+        const wr = getWeekRange(reviewWeek.value);
+        weekRangeLabel.textContent = wr.label;
+        tableTitle.textContent = `Weekly Field Performance Rollup (${wr.label})`;
+        tableSubtitle.textContent = `Aggregated performance for week ${reviewWeek.value} compared to weekly quotas.`;
+        viewIndicator.textContent = "Weekly Rollup";
         viewIndicator.className = "text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full font-medium self-start sm:self-auto";
         labelDoctors.textContent = "Weekly Doctor Visits";
         labelPharmacies.textContent = "Weekly Pharmacy Visits";
@@ -1471,9 +1708,16 @@
         labelOrders.textContent = "Weekly Orders Booked";
       } else {
         dateContainer.style.display = "none";
-        tableTitle.textContent = "Monthly Field Performance Overview (30-Day Cumulative)";
-        tableSubtitle.textContent = "Month-to-date cumulative totals and pacing toward monthly field targets.";
-        viewIndicator.textContent = "Monthly Rollup (Calculated)";
+        weekPickerContainer.classList.add("hidden");
+        weekPickerContainer.style.display = "none";
+        monthPickerContainer.classList.remove("hidden");
+        monthPickerContainer.style.display = "flex";
+
+        const mr = getMonthRange(reviewMonth.value);
+        monthRangeLabel.textContent = mr.label;
+        tableTitle.textContent = `Monthly Field Performance Overview (${mr.label})`;
+        tableSubtitle.textContent = `Aggregated monthly totals for ${mr.label} and pacing toward monthly field targets.`;
+        viewIndicator.textContent = "Monthly Rollup";
         viewIndicator.className = "text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium self-start sm:self-auto";
         labelDoctors.textContent = "Monthly Doctor Visits";
         labelPharmacies.textContent = "Monthly Pharmacy Visits";
@@ -1539,6 +1783,7 @@
       });
 
       updateStatsFromList(records, TARGETS.daily);
+      renderManagerCharts(records, "daily");
     }
 
     function renderAggregatedTable(timeframe) {
@@ -1554,7 +1799,17 @@
         orderValue: 0
       }));
 
+      let dateFilter = (d) => true;
+      if (timeframe === "weekly") {
+        const wr = getWeekRange(reviewWeek.value);
+        dateFilter = (d) => d >= wr.start && d <= wr.end;
+      } else if (timeframe === "monthly") {
+        const mr = getMonthRange(reviewMonth.value);
+        dateFilter = (d) => d.startsWith(mr.monthStr);
+      }
+
       Object.keys(logs).forEach(dateKey => {
+        if (!dateFilter(dateKey)) return;
         const dayList = logs[dateKey];
         if (Array.isArray(dayList)) {
           dayList.forEach(entry => {
@@ -1575,7 +1830,6 @@
         const totalVisits = rep.docs + rep.pharms;
         const targetVisits = target.doc + target.pharm;
         const pct = targetVisits > 0 ? Math.round((totalVisits / targetVisits) * 100) : 0;
-        const barColor = pct >= 100 ? "bg-emerald-500" : (pct >= 50 ? "bg-indigo-500" : "bg-amber-500");
 
         const tr = document.createElement("tr");
         tr.className = "hover:bg-slate-50/80 transition";
@@ -1598,6 +1852,182 @@
       });
 
       updateStatsFromList(aggregated, target);
+      renderManagerCharts(aggregated, timeframe);
+    }
+
+    function renderManagerCharts(dataList, timeframe) {
+      const ctxVisits = document.getElementById("chart-visits");
+      const ctxRevenue = document.getElementById("chart-revenue");
+      if (!ctxVisits || !ctxRevenue) return;
+
+      const labels = dataList.map(r => r.name.split(" ")[0]);
+      const fullNames = dataList.map(r => r.name);
+      const docCalls = dataList.map(r => r.docs || 0);
+      const pharmCalls = dataList.map(r => r.pharms || 0);
+      const revenues = dataList.map(r => r.orderValue || 0);
+      const leads = dataList.map(r => r.leads || 0);
+
+      const visitsSub = document.getElementById("chart-visits-subtitle");
+      const revSub = document.getElementById("chart-revenue-subtitle");
+      const visitsBadge = document.getElementById("chart-visits-badge");
+
+      let periodLabel = "Daily View";
+      if (timeframe === "daily") {
+        periodLabel = `Date: ${selectedDate}`;
+        if (visitsBadge) visitsBadge.textContent = "Daily";
+      } else if (timeframe === "weekly") {
+        periodLabel = `Week: ${getWeekRange(reviewWeek.value).label}`;
+        if (visitsBadge) visitsBadge.textContent = "Weekly";
+      } else if (timeframe === "monthly") {
+        periodLabel = `Month: ${getMonthRange(reviewMonth.value).label}`;
+        if (visitsBadge) visitsBadge.textContent = "Monthly";
+      }
+
+      if (visitsSub) visitsSub.textContent = `Doctor (Indigo) vs. Chemist (Emerald) calls • ${periodLabel}`;
+      if (revSub) revSub.textContent = `Booked Revenue (₹ Bars) & Qualified Leads (Line) • ${periodLabel}`;
+
+      if (visitsChart) {
+        visitsChart.destroy();
+      }
+
+      visitsChart = new Chart(ctxVisits, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Doctor Visits",
+              data: docCalls,
+              backgroundColor: "rgba(79, 70, 229, 0.85)",
+              borderColor: "#4338ca",
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: "Pharmacy Visits",
+              data: pharmCalls,
+              backgroundColor: "rgba(16, 185, 129, 0.85)",
+              borderColor: "#059669",
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { boxWidth: 12, font: { size: 11, family: "Inter, sans-serif" } }
+            },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  const idx = items[0].dataIndex;
+                  return fullNames[idx] || labels[idx];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: "rgba(226, 232, 240, 0.6)" },
+              ticks: { precision: 0 }
+            }
+          }
+        }
+      });
+
+      if (revenueChart) {
+        revenueChart.destroy();
+      }
+
+      revenueChart = new Chart(ctxRevenue, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              type: "bar",
+              label: "Revenue (₹)",
+              data: revenues,
+              backgroundColor: "rgba(245, 158, 11, 0.8)",
+              borderColor: "#d97706",
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: "y"
+            },
+            {
+              type: "line",
+              label: "Qualified Leads",
+              data: leads,
+              borderColor: "#8b5cf6",
+              backgroundColor: "rgba(139, 92, 246, 0.15)",
+              borderWidth: 2,
+              pointRadius: 3,
+              pointBackgroundColor: "#8b5cf6",
+              tension: 0.3,
+              yAxisID: "y1"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { boxWidth: 12, font: { size: 11, family: "Inter, sans-serif" } }
+            },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  const idx = items[0].dataIndex;
+                  return fullNames[idx] || labels[idx];
+                },
+                label: function(item) {
+                  if (item.dataset.yAxisID === "y") {
+                    return `Revenue: ₹${Number(item.raw).toLocaleString('en-IN')}`;
+                  } else {
+                    return `Leads: ${item.raw}`;
+                  }
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            },
+            y: {
+              type: "linear",
+              position: "left",
+              beginAtZero: true,
+              grid: { color: "rgba(226, 232, 240, 0.6)" },
+              ticks: {
+                callback: function(val) {
+                  return "₹" + Number(val).toLocaleString('en-IN');
+                },
+                font: { size: 10 }
+              }
+            },
+            y1: {
+              type: "linear",
+              position: "right",
+              beginAtZero: true,
+              grid: { display: false },
+              ticks: { precision: 0, font: { size: 10 } }
+            }
+          }
+        }
+      });
     }
 
     function updateStatsFromList(list, benchmark) {
@@ -1836,9 +2266,10 @@
     // CSV Export
     btnExportCsv.addEventListener("click", () => {
       let dataRows = [];
-      let filename = `sales_report_${currentTab}_${selectedDate}.csv`;
+      let filename = "";
 
       if (currentTab === "daily") {
+        filename = `sales_report_daily_${selectedDate}.csv`;
         const records = getDayRecords(selectedDate);
         dataRows = records.map((r, i) => [
           i + 1,
@@ -1853,8 +2284,10 @@
           `"${(r.comments || '').replace(/"/g, '""')}"`,
           r.submitted ? "Submitted" : "Pending"
         ]);
-      } else {
-        const target = TARGETS[currentTab];
+      } else if (currentTab === "weekly") {
+        const wr = getWeekRange(reviewWeek.value);
+        filename = `sales_report_weekly_${reviewWeek.value}.csv`;
+        const target = TARGETS.weekly;
         const aggregated = REPS.map(r => ({
           id: r.id,
           name: r.name,
@@ -1867,19 +2300,73 @@
         }));
 
         Object.keys(logs).forEach(dateKey => {
-          const dayList = logs[dateKey];
-          if (Array.isArray(dayList)) {
-            dayList.forEach(entry => {
-              const agg = aggregated.find(a => a.id === entry.id);
-              if (agg) {
-                agg.docs += entry.docs || 0;
-                agg.pharms += entry.pharms || 0;
-                agg.leads += entry.leads || 0;
-                agg.orders += entry.orders || 0;
-                agg.orderValue += entry.orderValue || 0;
-                if (entry.areas && entry.areas.trim().length > 0) agg.areasCount++;
-              }
-            });
+          if (dateKey >= wr.start && dateKey <= wr.end) {
+            const dayList = logs[dateKey];
+            if (Array.isArray(dayList)) {
+              dayList.forEach(entry => {
+                const agg = aggregated.find(a => a.id === entry.id);
+                if (agg) {
+                  agg.docs += entry.docs || 0;
+                  agg.pharms += entry.pharms || 0;
+                  agg.leads += entry.leads || 0;
+                  agg.orders += entry.orders || 0;
+                  agg.orderValue += entry.orderValue || 0;
+                  if (entry.areas && entry.areas.trim().length > 0) agg.areasCount++;
+                }
+              });
+            }
+          }
+        });
+
+        dataRows = aggregated.map((r, i) => {
+          const totalVisits = r.docs + r.pharms;
+          const targetVisits = target.doc + target.pharm;
+          const pct = targetVisits > 0 ? Math.round((totalVisits / targetVisits) * 100) : 0;
+          return [
+            i + 1,
+            `"${r.name.replace(/"/g, '""')}"`,
+            `"${r.areasCount} active days"`,
+            r.docs,
+            r.pharms,
+            totalVisits,
+            r.leads,
+            r.orders,
+            r.orderValue,
+            "-",
+            `${pct}%`
+          ];
+        });
+      } else {
+        const mr = getMonthRange(reviewMonth.value);
+        filename = `sales_report_monthly_${reviewMonth.value}.csv`;
+        const target = TARGETS.monthly;
+        const aggregated = REPS.map(r => ({
+          id: r.id,
+          name: r.name,
+          areasCount: 0,
+          docs: 0,
+          pharms: 0,
+          leads: 0,
+          orders: 0,
+          orderValue: 0
+        }));
+
+        Object.keys(logs).forEach(dateKey => {
+          if (dateKey.startsWith(mr.monthStr)) {
+            const dayList = logs[dateKey];
+            if (Array.isArray(dayList)) {
+              dayList.forEach(entry => {
+                const agg = aggregated.find(a => a.id === entry.id);
+                if (agg) {
+                  agg.docs += entry.docs || 0;
+                  agg.pharms += entry.pharms || 0;
+                  agg.leads += entry.leads || 0;
+                  agg.orders += entry.orders || 0;
+                  agg.orderValue += entry.orderValue || 0;
+                  if (entry.areas && entry.areas.trim().length > 0) agg.areasCount++;
+                }
+              });
+            }
           }
         });
 
@@ -1934,6 +2421,12 @@
     });
 
     // Bootstrapping
+    const initDate = new Date();
+    reviewWeek.value = getISOWeekString(initDate);
+    reviewMonth.value = `${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}`;
+    weekRangeLabel.textContent = getWeekRange(reviewWeek.value).label;
+    monthRangeLabel.textContent = getMonthRange(reviewMonth.value).label;
+
     loadDataFromStorage();
     populateRepSelect();
     renderCurrentView();
