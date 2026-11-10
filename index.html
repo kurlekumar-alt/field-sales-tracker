@@ -35,10 +35,6 @@
 
       <!-- Header Controls -->
       <div class="flex flex-wrap items-center gap-2">
-        <button id="btn-cloud-settings" type="button" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition">
-          <span>☁️</span> Cloud Setup
-        </button>
-
         <!-- Role Toggle -->
         <div class="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
           <button id="btn-mode-rep" type="button" class="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition bg-white text-slate-900 shadow-sm">
@@ -340,12 +336,15 @@
       
       <!-- Manager Controls & Quick Actions -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <button id="btn-edit-roster" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white text-slate-700 hover:bg-slate-50 border border-slate-300 shadow-sm transition flex items-center gap-1.5">
             <span>👥</span> Edit Team Names
           </button>
           <button id="btn-export-csv" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition flex items-center gap-1.5">
             <span>⬇️</span> Export CSV Report
+          </button>
+          <button id="btn-cloud-settings" type="button" class="px-3 py-2 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center gap-1.5">
+            <span>☁️</span> Cloud Setup
           </button>
           <button id="btn-change-mgr-pin" type="button" class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300 transition">
             Change Mgr PIN
@@ -353,12 +352,6 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <button id="btn-sample" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition">
-            Load Sample Day
-          </button>
-          <button id="btn-sample-week" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition">
-            Simulate 1 Week
-          </button>
           <button id="btn-clear" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition border border-slate-300">
             Reset All
           </button>
@@ -776,7 +769,8 @@
     let currentTab = "daily"; // "daily" | "weekly" | "monthly"
     let selectedDate = new Date().toISOString().split("T")[0];
     let logs = {};
-    let cloudWebhookUrl = "";
+    const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyVQzKi1UvIbfXJlBVOsvm4wmnR1_N7w6aj6skVPJCXq-7o7A_H8_4QUPQXN8szmemUcA/exec";
+    let cloudWebhookUrl = DEFAULT_WEBHOOK_URL;
 
     // 3. LocalStorage Helpers
     function loadDataFromStorage() {
@@ -794,9 +788,7 @@
           logs = JSON.parse(storedLogs);
         }
         const storedUrl = localStorage.getItem("sales_cloud_webhook_url");
-        if (storedUrl) {
-          cloudWebhookUrl = storedUrl;
-        }
+        cloudWebhookUrl = storedUrl ? storedUrl : DEFAULT_WEBHOOK_URL;
       } catch (err) {
         console.warn("Storage read error:", err);
       }
@@ -964,8 +956,7 @@
     const tableSubtitle = document.getElementById("table-subtitle");
     const viewIndicator = document.getElementById("view-indicator");
 
-    const btnSample = document.getElementById("btn-sample");
-    const btnSampleWeek = document.getElementById("btn-sample-week");
+    // Demo sample buttons removed for production
     const btnClear = document.getElementById("btn-clear");
     const btnEditRoster = document.getElementById("btn-edit-roster");
     const btnExportCsv = document.getElementById("btn-export-csv");
@@ -1880,64 +1871,7 @@
     });
 
     // Quick Actions
-    btnSample.addEventListener("click", () => {
-      const sample = [
-        { areas: "Camp & Station Rd", docs: 11, pharms: 7, leads: 3, orders: 4, val: 1450 },
-        { areas: "Kothrud & Karve Rd", docs: 10, pharms: 6, leads: 2, orders: 3, val: 920 },
-        { areas: "Shivajinagar & FC Rd", docs: 12, pharms: 8, leads: 4, orders: 5, val: 1800 },
-        { areas: "Deccan & JM Road", docs: 8,  pharms: 5, leads: 1, orders: 2, val: 650 },
-        { areas: "Hadapsar & Magarpatta", docs: 10, pharms: 6, leads: 2, orders: 3, val: 1100 },
-        { areas: "Pimpri & Chinchwad", docs: 9,  pharms: 6, leads: 3, orders: 2, val: 780 },
-        { areas: "Aundh & Baner", docs: 11, pharms: 7, leads: 4, orders: 4, val: 1600 },
-        { areas: "Viman Nagar & Kharadi", docs: 7,  pharms: 4, leads: 1, orders: 1, val: 420 },
-        { areas: "Kalyani Nagar & Yerwada", docs: 10, pharms: 6, leads: 2, orders: 3, val: 1050 },
-        { areas: "Swargate & Katraj", docs: 12, pharms: 7, leads: 3, orders: 5, val: 1950 },
-        { areas: "Bibvewadi & Market Yard", docs: 9,  pharms: 5, leads: 2, orders: 2, val: 800 },
-        { areas: "Bhosari & Moshi", docs: 10, pharms: 6, leads: 3, orders: 4, val: 1350 },
-        { areas: "Wakad & Hinjawadi", docs: 11, pharms: 6, leads: 2, orders: 3, val: 1150 }
-      ];
-
-      const records = getDayRecords(selectedDate);
-      records.forEach((rep, i) => {
-        const s = sample[i % sample.length];
-        rep.areas = s.areas;
-        rep.docs = s.docs;
-        rep.pharms = s.pharms;
-        rep.leads = s.leads;
-        rep.orders = s.orders;
-        rep.orderValue = s.val;
-        rep.submitted = true;
-      });
-
-      saveLogsToStorage();
-      renderCurrentView();
-      showToast("Loaded sample territory entries.");
-    });
-
-    btnSampleWeek.addEventListener("click", () => {
-      const today = new Date();
-      const sampleAreasList = ["Central Route", "North Suburbs", "Industrial Belt", "South Clinics", "East Highway Hub"];
-      for (let d = 0; d < 5; d++) {
-        const dateObj = new Date(today);
-        dateObj.setDate(today.getDate() - d);
-        const dStr = dateObj.toISOString().split("T")[0];
-        
-        const dayRecords = getDayRecords(dStr);
-        dayRecords.forEach(rep => {
-          rep.areas = sampleAreasList[Math.floor(Math.random() * sampleAreasList.length)];
-          rep.docs = 8 + Math.floor(Math.random() * 5);
-          rep.pharms = 4 + Math.floor(Math.random() * 4);
-          rep.leads = 1 + Math.floor(Math.random() * 3);
-          rep.orders = 2 + Math.floor(Math.random() * 4);
-          rep.orderValue = rep.orders * (200 + Math.floor(Math.random() * 200));
-          rep.submitted = true;
-        });
-      }
-
-      saveLogsToStorage();
-      switchTab("weekly");
-      showToast("Simulated 5 days with territory logs!");
-    });
+// Demo quick actions removed for production
 
     btnClear.addEventListener("click", () => {
       logs = {};
