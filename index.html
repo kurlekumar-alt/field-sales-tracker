@@ -717,23 +717,161 @@
                 Copy Code
               </button>
             </div>
-            <pre class="bg-slate-900 text-slate-100 p-3 rounded-lg overflow-x-auto text-[11px] font-mono leading-normal" id="script-code-block">function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var data = JSON.parse(e.postData.contents);
-  sheet.appendRow([
-    new Date(),
-    data.date,
-    data.repName,
-    data.areasCovered,
-    data.docs,
-    data.pharms,
-    data.leads,
-    data.orders,
-    data.orderValue,
-    data.comments
-  ]);
-  return ContentService.createTextOutput(JSON.stringify({status: "ok"}))
-    .setMimeType(ContentService.MimeType.JSON);
+            <pre class="bg-slate-900 text-slate-100 p-3 rounded-lg overflow-x-auto text-[11px] font-mono leading-normal" id="script-code-block">// ========================================================
+// GRATIA PHARMA SOLUTIONS - FIELD SALES TRACKER BACKEND
+// Two-Way Sync for Daily Field Logs & Team Roster
+// ========================================================
+
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var rosterSheet = getOrCreateRosterSheet(ss);
+    var data = rosterSheet.getDataRange().getValues();
+    var reps = [];
+
+    if (data.length <= 1) {
+      seedDefaultRoster(rosterSheet);
+      data = rosterSheet.getDataRange().getValues();
+    }
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[1] && String(row[1]).trim().length > 0) {
+        reps.push({
+          id: Number(row[0]) || i,
+          name: String(row[1]).trim(),
+          pin: String(row[2] || "1234").trim(),
+          active: String(row[3]).toLowerCase() !== "inactive"
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      count: reps.length,
+      reps: reps
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var data = JSON.parse(e.postData.contents);
+
+    // Save/Update Team Roster from Manager Dashboard
+    if (data.action === "save_roster" && Array.isArray(data.reps)) {
+      var rosterSheet = getOrCreateRosterSheet(ss);
+      if (rosterSheet.getLastRow() > 1) {
+        rosterSheet.getRange(2, 1, rosterSheet.getLastRow() - 1, 5).clearContent();
+      }
+
+      var rows = data.reps.map(function(r) {
+        return [
+          Number(r.id),
+          String(r.name || "").trim(),
+          String(r.pin || "1234").trim(),
+          r.active !== false ? "Active" : "Inactive",
+          new Date()
+        ];
+      });
+
+      if (rows.length > 0) {
+        rosterSheet.getRange(2, 1, rows.length, 5).setValues(rows);
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        action: "save_roster",
+        count: rows.length
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Submit Daily Field Activity Report
+    var logsSheet = getOrCreateLogsSheet(ss);
+    logsSheet.appendRow([
+      new Date(),
+      data.date || "",
+      data.repName || "Unknown Rep",
+      data.areasCovered || "",
+      Number(data.docs) || 0,
+      Number(data.pharms) || 0,
+      Number(data.leads) || 0,
+      Number(data.orders) || 0,
+      Number(data.orderValue) || 0,
+      data.comments || ""
+    ]);
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      action: "submit_report"
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getOrCreateLogsSheet(ss) {
+  var sheet = ss.getSheetByName("Daily_Logs");
+  if (!sheet) {
+    sheet = ss.insertSheet("Daily_Logs");
+    sheet.appendRow([
+      "Timestamp", "Submission Date", "Representative", "Areas Covered",
+      "Doctor Calls", "Pharmacy Calls", "Potential Leads", "Orders Booked",
+      "Order Value (INR)", "Remarks / Notes"
+    ]);
+    sheet.getRange(1, 1, 1, 10).setFontWeight("bold").setBackground("#f1f5f9");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getOrCreateRosterSheet(ss) {
+  var sheet = ss.getSheetByName("Roster");
+  if (!sheet) {
+    sheet = ss.insertSheet("Roster");
+    sheet.appendRow(["Rep ID", "Representative Name", "PIN", "Status", "Last Synchronized"]);
+    sheet.getRange(1, 1, 1, 5).setFontWeight("bold").setBackground("#f1f5f9");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function seedDefaultRoster(sheet) {
+  var defaultReps = [
+    [1, "Alex Morgan", "1234", "Active", new Date()],
+    [2, "Jordan Lee", "1234", "Active", new Date()],
+    [3, "Sam Taylor", "1234", "Active", new Date()],
+    [4, "Chris Evans", "1234", "Active", new Date()],
+    [5, "Pat Chen", "1234", "Active", new Date()],
+    [6, "Taylor Brooks", "1234", "Active", new Date()],
+    [7, "Morgan Bailey", "1234", "Active", new Date()],
+    [8, "Casey Kim", "1234", "Active", new Date()],
+    [9, "Jamie Smith", "1234", "Active", new Date()],
+    [10, "Riley Davis", "1234", "Active", new Date()],
+    [11, "Avery Johnson", "1234", "Active", new Date()],
+    [12, "Quinn Martinez", "1234", "Active", new Date()],
+    [13, "Dakota Miller", "1234", "Active", new Date()]
+  ];
+  sheet.getRange(2, 1, defaultReps.length, 5).setValues(defaultReps);
+}
+
+function testAuth() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var logs = getOrCreateLogsSheet(ss);
+  var roster = getOrCreateRosterSheet(ss);
+  if (roster.getLastRow() <= 1) seedDefaultRoster(roster);
+  logs.appendRow(["Test Authorization", new Date(), "System Check"]);
 }</pre>
           </div>
 
@@ -776,11 +914,16 @@
           <!-- Dynamic rep list with delete buttons -->
         </div>
 
-        <!-- Add Rep Button -->
-        <div class="px-6 py-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-          <button id="btn-add-rep" type="button" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center gap-1.5">
-            <span>➕</span> Add New Representative
-          </button>
+        <!-- Add Rep Button & Cloud Sync -->
+        <div class="px-6 py-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <button id="btn-add-rep" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center gap-1.5">
+              <span>➕</span> Add New Representative
+            </button>
+            <button id="btn-fetch-roster-cloud" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-1.5">
+              <span>🔄</span> Pull from Sheet
+            </button>
+          </div>
           <span class="text-xs text-slate-400" id="roster-modal-total">Total reps</span>
         </div>
 
@@ -1101,6 +1244,7 @@
     const btnCancelRoster = document.getElementById("btn-cancel-roster");
     const btnSaveRoster = document.getElementById("btn-save-roster");
     const btnAddRep = document.getElementById("btn-add-rep");
+    const btnFetchRosterCloud = document.getElementById("btn-fetch-roster-cloud");
     const rosterModalTotal = document.getElementById("roster-modal-total");
 
     // Manager Edit Modal elements
@@ -2208,6 +2352,80 @@
     btnCloseModal.addEventListener("click", closeRosterModal);
     btnCancelRoster.addEventListener("click", closeRosterModal);
 
+
+    // Two-Way Cloud Roster Sync Functions
+    function fetchRosterFromCloud(silent = false) {
+      if (!cloudWebhookUrl || !cloudWebhookUrl.trim().startsWith("http")) return;
+      
+      const fetchUrl = cloudWebhookUrl.trim() + (cloudWebhookUrl.includes("?") ? "&" : "?") + "action=get_roster&t=" + Date.now();
+      
+      fetch(fetchUrl, {
+        method: "GET",
+        cache: "no-cache"
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Network response was not ok");
+        return res.json();
+      })
+      .then(data => {
+        if (data && data.status === "success" && Array.isArray(data.reps) && data.reps.length > 0) {
+          REPS = data.reps;
+          try {
+            localStorage.setItem("sales_reps_roster_v2", JSON.stringify(REPS));
+          } catch (e) {
+            console.warn(e);
+          }
+          populateRepSelect();
+          renderCurrentView();
+          const statusText = document.getElementById("cloud-status-text");
+          if (statusText) statusText.textContent = "Cloud Roster Synced";
+          if (!silent) {
+            showToast(`Team roster synced from Google Sheet (${REPS.length} Reps)`);
+          }
+          if (!rosterModal.classList.contains("hidden")) {
+            renderRosterModalInputs();
+          }
+        }
+      })
+      .catch(err => {
+        console.warn("Cloud roster fetch fallback to local cache:", err);
+        if (!silent) {
+          showToast("Using local roster cache (Sheet unreachable)");
+        }
+      });
+    }
+
+    function syncRosterToCloud(rosterList) {
+      if (!cloudWebhookUrl || !cloudWebhookUrl.trim().startsWith("http")) return;
+      const payload = {
+        action: "save_roster",
+        reps: rosterList.map(r => ({
+          id: r.id,
+          name: r.name,
+          pin: r.pin || "1234",
+          active: r.active !== false
+        }))
+      };
+      
+      fetch(cloudWebhookUrl.trim(), {
+        method: "POST",
+        mode: "no-cors",
+        cache: "no-cache",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        console.log("Roster dispatched to Google Sheet");
+      })
+      .catch(err => console.warn("Roster cloud sync failed:", err));
+    }
+
+    if (btnFetchRosterCloud) {
+      btnFetchRosterCloud.addEventListener("click", () => {
+        fetchRosterFromCloud(false);
+      });
+    }
+
     btnSaveRoster.addEventListener("click", () => {
       const valid = temporaryRoster.filter(r => r.name.trim().length > 0);
       if (valid.length === 0) {
@@ -2222,10 +2440,11 @@
       }
 
       saveRepsToStorage();
+      syncRosterToCloud(REPS);
       closeRosterModal();
       populateRepSelect();
       renderCurrentView();
-      showToast(`Roster saved with ${REPS.length} representatives!`);
+      showToast(`Roster saved & synced to Google Sheet (${REPS.length} reps)!`);
     });
 
     // Cloud Modal Handlers
@@ -2433,6 +2652,7 @@
     showSavedIndicator();
     checkRepFormLockState();
     updateTeamCounters();
+    fetchRosterFromCloud(true);
   </script>
 </body>
 </html>
